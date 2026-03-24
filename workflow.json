@@ -1,0 +1,275 @@
+{
+  "name": "Pearl - Candidate Scoring (A320 Recruitment Coordinator)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-manual",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $vars.SPREADSHEET_ID }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Candidates",
+          "mode": "name"
+        },
+        "options": {
+          "headerRow": 1
+        }
+      },
+      "id": "read-candidates",
+      "name": "Read Candidates Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [460, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "google-sheets-cred",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-name",
+              "leftValue": "={{ $json.name }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            },
+            {
+              "id": "check-summary",
+              "leftValue": "={{ $json.summary }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "validate-row",
+      "name": "Validate Required Fields",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": []
+        },
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"llama-3.1-70b-versatile\",\n  \"temperature\": 0.1,\n  \"max_tokens\": 600,\n  \"response_format\": { \"type\": \"json_object\" },\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a senior recruiter at Pearl Talent evaluating candidates for the Recruitment Coordinator (A320) role. Respond ONLY with valid JSON — no markdown, no explanation outside the JSON.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Evaluate this candidate against the Recruitment Coordinator (A320) role at Pearl Talent.\\n\\n## JOB REQUIREMENTS\\nMust-Haves:\\n- 2-4+ years of recruiting coordination or recruiting operations experience\\n- Hands-on Ashby ATS experience (day-one proficiency required)\\n- Strong organizational and multitasking skills across multiple open roles\\n- Excellent written and verbal English communication\\n- Proven ability to work with urgency in fast-paced, high-growth environments\\n- High level of ownership, accountability, and attention to detail\\n\\nNice-to-Haves:\\n- Experience with technical, operational, and leadership role hiring\\n- Startup or high-growth environment exposure\\n- Recruiting workflow automation experience\\n- Remote/distributed team experience\\n- Strong async communication habits\\n\\nKey responsibilities: Interview scheduling, pipeline tracking, ATS management, candidate communication, workflow automation (45% coordination, 25% ops support, 20% automation, 10% communication).\\n\\nLocations accepted: Philippines, LATAM, Anywhere remote.\\n\\n## CANDIDATE\\nName: {{ $json.name }}\\nLocation: {{ $json.location }}\\nYears of experience: {{ $json.years_experience }}\\nCurrent role: {{ $json.current_role }}\\nATS experience: {{ $json.ats_experience }}\\nEnglish level: {{ $json.english_level }}\\nStartup experience: {{ $json.startup_experience }}\\nAutomation experience: {{ $json.automation_experience }}\\nRemote experience: {{ $json.remote_experience }}\\nSummary: {{ $json.summary }}\\n\\n## SCORING INSTRUCTIONS\\nScore each dimension 1-10. Then compute overall_score as weighted average:\\n- ashby_score × 0.30 (critical: must have day-one proficiency)\\n- coordination_score × 0.25\\n- english_score × 0.20\\n- startup_score × 0.15\\n- automation_score × 0.10\\n\\nTier classification (based on overall_score):\\n- Strong Yes: overall_score >= 7.5\\n- Yes: overall_score >= 6.0\\n- Maybe: overall_score >= 4.5\\n- No: overall_score < 4.5\\n\\nRespond with this exact JSON structure:\\n{\\n  \\\"ashby_score\\\": <1-10>,\\n  \\\"coordination_score\\\": <1-10>,\\n  \\\"english_score\\\": <1-10>,\\n  \\\"startup_score\\\": <1-10>,\\n  \\\"automation_score\\\": <1-10>,\\n  \\\"overall_score\\\": <1.0-10.0, one decimal>,\\n  \\\"tier\\\": \\\"Strong Yes|Yes|Maybe|No\\\",\\n  \\\"top_strengths\\\": \\\"<2-3 specific strengths, comma-separated>\\\",\\n  \\\"main_gap\\\": \\\"<single most critical gap or 'None'>\\\",\\n  \\\"recommendation\\\": \\\"<1-2 sentence hiring recommendation>\\\"\\n}\"\n    }\n  ]\n}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "score-with-llm",
+      "name": "Score with Groq LLM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "groq-api-cred",
+          "name": "Groq API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const candidate = $('Read Candidates Sheet').item.json;\nconst llmResponse = $input.item.json;\n\n// Extract and parse the LLM's JSON content\nlet scoring;\ntry {\n  const rawContent = llmResponse.choices[0].message.content;\n  scoring = JSON.parse(rawContent);\n} catch (e) {\n  // Malformed LLM response — return error row\n  return [{\n    json: {\n      name: candidate.name,\n      email: candidate.email,\n      location: candidate.location,\n      years_experience: candidate.years_experience,\n      current_role: candidate.current_role,\n      ats_experience: candidate.ats_experience,\n      ashby_score: 'ERROR',\n      coordination_score: 'ERROR',\n      english_score: 'ERROR',\n      startup_score: 'ERROR',\n      automation_score: 'ERROR',\n      overall_score: 'ERROR',\n      tier: 'ERROR',\n      top_strengths: 'LLM parsing failed',\n      main_gap: 'LLM parsing failed',\n      recommendation: `Scoring failed: ${e.message}. Raw: ${llmResponse.choices?.[0]?.message?.content?.substring(0, 100) ?? 'no content'}`,\n      scored_at: new Date().toISOString(),\n    }\n  }];\n}\n\n// Validate required fields exist\nconst required = ['ashby_score','coordination_score','english_score','startup_score','automation_score','overall_score','tier'];\nconst missing = required.filter(k => scoring[k] === undefined || scoring[k] === null);\n\nif (missing.length > 0) {\n  return [{\n    json: {\n      name: candidate.name,\n      email: candidate.email,\n      location: candidate.location,\n      years_experience: candidate.years_experience,\n      current_role: candidate.current_role,\n      ats_experience: candidate.ats_experience,\n      ashby_score: 'ERROR',\n      coordination_score: 'ERROR',\n      english_score: 'ERROR',\n      startup_score: 'ERROR',\n      automation_score: 'ERROR',\n      overall_score: 'ERROR',\n      tier: 'ERROR',\n      top_strengths: `Missing fields: ${missing.join(', ')}`,\n      main_gap: 'Incomplete LLM response',\n      recommendation: 'Manual review required — LLM returned incomplete scoring.',\n      scored_at: new Date().toISOString(),\n    }\n  }];\n}\n\n// Recompute weighted score server-side to prevent LLM arithmetic errors\nconst recomputed = (\n  Number(scoring.ashby_score)        * 0.30 +\n  Number(scoring.coordination_score) * 0.25 +\n  Number(scoring.english_score)      * 0.20 +\n  Number(scoring.startup_score)      * 0.15 +\n  Number(scoring.automation_score)   * 0.10\n);\n\nconst recomputedRounded = Math.round(recomputed * 10) / 10;\n\nconst tierMap = [\n  [7.5, 'Strong Yes'],\n  [6.0, 'Yes'],\n  [4.5, 'Maybe'],\n  [0,   'No'],\n];\nconst tier = tierMap.find(([threshold]) => recomputedRounded >= threshold)[1];\n\nreturn [{\n  json: {\n    name: candidate.name,\n    email: candidate.email,\n    location: candidate.location,\n    years_experience: candidate.years_experience,\n    current_role: candidate.current_role,\n    ats_experience: candidate.ats_experience,\n    ashby_score: scoring.ashby_score,\n    coordination_score: scoring.coordination_score,\n    english_score: scoring.english_score,\n    startup_score: scoring.startup_score,\n    automation_score: scoring.automation_score,\n    overall_score: recomputedRounded,\n    tier,\n    top_strengths: scoring.top_strengths ?? '',\n    main_gap: scoring.main_gap ?? '',\n    recommendation: scoring.recommendation ?? '',\n    scored_at: new Date().toISOString(),\n  }\n}];\n"
+      },
+      "id": "parse-and-validate",
+      "name": "Parse & Validate Score",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $vars.SPREADSHEET_ID }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Results",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "name": "={{ $json.name }}",
+            "email": "={{ $json.email }}",
+            "location": "={{ $json.location }}",
+            "years_experience": "={{ $json.years_experience }}",
+            "current_role": "={{ $json.current_role }}",
+            "ats_experience": "={{ $json.ats_experience }}",
+            "ashby_score": "={{ $json.ashby_score }}",
+            "coordination_score": "={{ $json.coordination_score }}",
+            "english_score": "={{ $json.english_score }}",
+            "startup_score": "={{ $json.startup_score }}",
+            "automation_score": "={{ $json.automation_score }}",
+            "overall_score": "={{ $json.overall_score }}",
+            "tier": "={{ $json.tier }}",
+            "top_strengths": "={{ $json.top_strengths }}",
+            "main_gap": "={{ $json.main_gap }}",
+            "recommendation": "={{ $json.recommendation }}",
+            "scored_at": "={{ $json.scored_at }}"
+          }
+        },
+        "options": {
+          "headerRow": 1
+        }
+      },
+      "id": "write-results",
+      "name": "Write to Results Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [1340, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "google-sheets-cred",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Rows that were filtered out (missing name or summary)\nconst candidate = $input.item.json;\n\nreturn [{\n  json: {\n    name: candidate.name ?? '(unknown)',\n    email: candidate.email ?? '',\n    location: candidate.location ?? '',\n    years_experience: candidate.years_experience ?? '',\n    current_role: candidate.current_role ?? '',\n    ats_experience: candidate.ats_experience ?? '',\n    ashby_score: 'SKIPPED',\n    coordination_score: 'SKIPPED',\n    english_score: 'SKIPPED',\n    startup_score: 'SKIPPED',\n    automation_score: 'SKIPPED',\n    overall_score: 'SKIPPED',\n    tier: 'SKIPPED',\n    top_strengths: '',\n    main_gap: 'Row skipped — missing required fields (name or summary)',\n    recommendation: 'Row was incomplete and skipped by validation.',\n    scored_at: new Date().toISOString(),\n  }\n}];\n"
+      },
+      "id": "handle-invalid",
+      "name": "Flag Skipped Row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 500]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $vars.SPREADSHEET_ID }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Results",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "name": "={{ $json.name }}",
+            "email": "={{ $json.email }}",
+            "location": "={{ $json.location }}",
+            "years_experience": "={{ $json.years_experience }}",
+            "current_role": "={{ $json.current_role }}",
+            "ats_experience": "={{ $json.ats_experience }}",
+            "ashby_score": "={{ $json.ashby_score }}",
+            "coordination_score": "={{ $json.coordination_score }}",
+            "english_score": "={{ $json.english_score }}",
+            "startup_score": "={{ $json.startup_score }}",
+            "automation_score": "={{ $json.automation_score }}",
+            "overall_score": "={{ $json.overall_score }}",
+            "tier": "={{ $json.tier }}",
+            "top_strengths": "={{ $json.top_strengths }}",
+            "main_gap": "={{ $json.main_gap }}",
+            "recommendation": "={{ $json.recommendation }}",
+            "scored_at": "={{ $json.scored_at }}"
+          }
+        },
+        "options": {
+          "headerRow": 1
+        }
+      },
+      "id": "write-skipped",
+      "name": "Write Skipped to Results",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [900, 500],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "google-sheets-cred",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [{ "node": "Read Candidates Sheet", "type": "main", "index": 0 }]
+      ]
+    },
+    "Read Candidates Sheet": {
+      "main": [
+        [{ "node": "Validate Required Fields", "type": "main", "index": 0 }]
+      ]
+    },
+    "Validate Required Fields": {
+      "main": [
+        [{ "node": "Score with Groq LLM", "type": "main", "index": 0 }],
+        [{ "node": "Flag Skipped Row", "type": "main", "index": 0 }]
+      ]
+    },
+    "Score with Groq LLM": {
+      "main": [
+        [{ "node": "Parse & Validate Score", "type": "main", "index": 0 }]
+      ]
+    },
+    "Parse & Validate Score": {
+      "main": [
+        [{ "node": "Write to Results Sheet", "type": "main", "index": 0 }]
+      ]
+    },
+    "Flag Skipped Row": {
+      "main": [
+        [{ "node": "Write Skipped to Results", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "pinData": {}
+}
