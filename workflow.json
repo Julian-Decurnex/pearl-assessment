@@ -7,10 +7,7 @@
       "name": "Manual Trigger",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
-      "position": [
-        160,
-        -160
-      ]
+      "position": [160, -160]
     },
     {
       "parameters": {
@@ -30,10 +27,7 @@
       "name": "Read Candidates Sheet",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4,
-      "position": [
-        352,
-        -160
-      ],
+      "position": [352, -160],
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "gnWsG4rD0LI3VmDk",
@@ -61,7 +55,7 @@
             },
             {
               "id": "check-summary",
-              "leftValue": "={{ $json.summary }}",
+              "leftValue": "={{ $json.resume_summary }}",
               "rightValue": "",
               "operator": {
                 "type": "string",
@@ -77,10 +71,17 @@
       "name": "Validate Required Fields",
       "type": "n8n-nodes-base.filter",
       "typeVersion": 2,
-      "position": [
-        544,
-        -160
-      ]
+      "position": [544, -160]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [752, -160],
+      "id": "f44d171e-e789-41b4-a616-33590bd6093c",
+      "name": "Loop Over Items"
     },
     {
       "parameters": {
@@ -99,7 +100,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"model\": \"llama-3.3-70b-versatile\",\n  \"temperature\": 0.1,\n  \"max_tokens\": 600,\n  \"response_format\": { \"type\": \"json_object\" },\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a senior recruiter at Pearl Talent evaluating candidates for the Recruitment Coordinator (A320) role. Respond ONLY with valid JSON — no markdown, no explanation outside the JSON.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Evaluate this candidate against the Recruitment Coordinator (A320) role at Pearl Talent.\\n\\n## JOB REQUIREMENTS\\nMust-Haves:\\n- 2-4+ years of recruiting coordination or recruiting operations experience\\n- Hands-on Ashby ATS experience (day-one proficiency required)\\n- Strong organizational and multitasking skills across multiple open roles\\n- Excellent written and verbal English communication\\n- Proven ability to work with urgency in fast-paced, high-growth environments\\n- High level of ownership, accountability, and attention to detail\\n\\nNice-to-Haves:\\n- Experience with technical, operational, and leadership role hiring\\n- Startup or high-growth environment exposure\\n- Recruiting workflow automation experience\\n- Remote/distributed team experience\\n- Strong async communication habits\\n\\nKey responsibilities: Interview scheduling, pipeline tracking, ATS management, candidate communication, workflow automation (45% coordination, 25% ops support, 20% automation, 10% communication).\\n\\nLocations accepted: Philippines, LATAM, Anywhere remote.\\n\\n## CANDIDATE\\nName: {{ $json.name }}\\nLocation: {{ $json.location }}\\nYears of experience: {{ $json.years_experience }}\\nCurrent role: {{ $json.current_role }}\\nATS experience: {{ $json.ats_experience }}\\nEnglish level: {{ $json.english_level }}\\nStartup experience: {{ $json.startup_experience }}\\nAutomation experience: {{ $json.automation_experience }}\\nRemote experience: {{ $json.remote_experience }}\\nSummary: {{ $json.summary }}\\n\\n## SCORING INSTRUCTIONS\\nScore each dimension 1-10. Then compute overall_score as weighted average:\\n- ashby_score × 0.30 (critical: must have day-one proficiency)\\n- coordination_score × 0.25\\n- english_score × 0.20\\n- startup_score × 0.15\\n- automation_score × 0.10\\n\\nTier classification (based on overall_score):\\n- Strong Yes: overall_score >= 7.5\\n- Yes: overall_score >= 6.0\\n- Maybe: overall_score >= 4.5\\n- No: overall_score < 4.5\\n\\nRespond with this exact JSON structure:\\n{\\n  \\\"ashby_score\\\": <1-10>,\\n  \\\"coordination_score\\\": <1-10>,\\n  \\\"english_score\\\": <1-10>,\\n  \\\"startup_score\\\": <1-10>,\\n  \\\"automation_score\\\": <1-10>,\\n  \\\"overall_score\\\": <1.0-10.0, one decimal>,\\n  \\\"tier\\\": \\\"Strong Yes|Yes|Maybe|No\\\",\\n  \\\"top_strengths\\\": \\\"<2-3 specific strengths, comma-separated>\\\",\\n  \\\"main_gap\\\": \\\"<single most critical gap or 'None'>\\\",\\n  \\\"recommendation\\\": \\\"<1-2 sentence hiring recommendation>\\\"\\n}\"\n    }\n  ]\n}",
+        "jsonBody": "={\n  \"model\": \"llama-3.3-70b-versatile\",\n  \"temperature\": 0.1,\n  \"max_tokens\": 400,\n  \"response_format\": { \"type\": \"json_object\" },\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a senior recruiter at Pearl Talent. Score candidates against the provided job description. Respond ONLY with valid JSON — no markdown, no text outside the JSON object.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Score this candidate against the Recruitment Coordinator (A320) role at Pearl Talent.\\n\\n## JOB REQUIREMENTS\\nMust-Haves:\\n- 2-4+ years recruiting coordination or operations experience\\n- Hands-on Ashby ATS proficiency (day-one requirement)\\n- Strong organizational skills across multiple simultaneous open roles\\n- Excellent written and verbal English\\n- Proven urgency in fast-paced, high-growth environments\\n- High ownership and attention to detail\\n\\nNice-to-Haves: startup/high-growth exposure, workflow automation experience, remote/distributed team experience, async communication habits.\\n\\nKey responsibilities: interview scheduling (45%), recruiting ops support (25%), process automation (20%), candidate communication (10%).\\n\\n## CANDIDATE\\nName: {{ $json.name }}\\nLocation: {{ $json.location }}\\nYears of experience: {{ $json.years_experience }}\\nPsychometric score: {{ $json.psychometric_score }}/100\\nEnglish proficiency score: {{ $json.english_proficiency_score }}/100\\nResume summary: {{ $json.resume_summary }}\\n\\n## SCORING INSTRUCTIONS\\nScore each dimension 0-100, then compute overall_score as weighted average:\\n- technical_skills x 0.35: ATS proficiency (Ashby is critical), tools used, automation capability\\n- experience_relevance x 0.40: recruiting coordination depth, startup/high-growth fit, role history alignment\\n- communication_indicators x 0.25: weight the provided english_proficiency_score at 60% and your read of the resume communication quality at 40%\\n\\nFlag rules (apply to overall_score):\\n- Qualified: >= 70\\n- Needs Review: >= 45\\n- Unqualified: < 45\\n\\nReturn exactly this JSON — nothing else:\\n{\\n  \\\"technical_skills\\\": <0-100>,\\n  \\\"experience_relevance\\\": <0-100>,\\n  \\\"communication_indicators\\\": <0-100>,\\n  \\\"overall_score\\\": <0-100, one decimal>,\\n  \\\"match_explanation\\\": \\\"<one sentence explaining the overall fit>\\\",\\n  \\\"flag\\\": \\\"Qualified|Needs Review|Unqualified\\\"\\n}\"\n    }\n  ]\n}",
         "options": {
           "timeout": 30000
         }
@@ -108,10 +109,7 @@
       "name": "Score with Groq LLM",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [
-        960,
-        -160
-      ],
+      "position": [960, -160],
       "credentials": {
         "groqApi": {
           "id": "N5JpUubbLVmayav2",
@@ -122,16 +120,13 @@
     {
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "const groqResponse = $input.item.json;\n  const candidate = $('Validate Required Fields').item.json;\n\n  let scoring;\n  try {\n    const rawContent = groqResponse.choices[0].message.content;\n    scoring = JSON.parse(rawContent);\n  } catch (e) {\n    return {\n      json: {\n        name: candidate.name ?? '(unknown)',\n        email: candidate.email ?? '',\n        location: candidate.location ?? '',\n        years_experience: candidate.years_experience ?? '',\n        current_role: candidate.current_role ?? '',\n        ats_experience: candidate.ats_experience ?? '',\n        ashby_score: 'ERROR', coordination_score: 'ERROR',\n        english_score: 'ERROR', startup_score: 'ERROR',\n        automation_score: 'ERROR', overall_score: 'ERROR',\n        tier: 'ERROR',\n        top_strengths: '',\n        main_gap: 'LLM parsing failed',\n        recommendation: `Parse error: ${e.message}`,\n        scored_at: new Date().toISOString(),\n      }\n    };\n  }\n\n  const required = ['ashby_score','coordination_score','english_score','startup_score','automation_score'];\n  const missing = required.filter(k => scoring[k] == null);\n  if (missing.length > 0) {\n    return {\n      json: {\n        name: candidate.name ?? '(unknown)',\n        email: candidate.email ?? '',\n        location: candidate.location ?? '',\n        years_experience: candidate.years_experience ?? '',\n        current_role: candidate.current_role ?? '',\n        ats_experience: candidate.ats_experience ?? '',\n        ashby_score: 'ERROR', coordination_score: 'ERROR',\n        english_score: 'ERROR', startup_score: 'ERROR',\n        automation_score: 'ERROR', overall_score: 'ERROR',\n        tier: 'ERROR',\n        top_strengths: '',\n        main_gap: `Missing fields: ${missing.join(', ')}`,\n        recommendation: 'Manual review required.',\n        scored_at: new Date().toISOString(),\n      }\n    };\n  }\n\n  const recomputed = Math.round((\n    Number(scoring.ashby_score)        * 0.30 +\n    Number(scoring.coordination_score) * 0.25 +\n    Number(scoring.english_score)      * 0.20 +\n    Number(scoring.startup_score)      * 0.15 +\n    Number(scoring.automation_score)   * 0.10\n  ) * 10) / 10;\n\n  const tier = recomputed >= 7.5 ? 'Strong Yes'\n             : recomputed >= 6.0 ? 'Yes'\n             : recomputed >= 4.5 ? 'Maybe'\n             : 'No';\n\n  return {\n    json: {\n      name: candidate.name,\n      email: candidate.email,\n      location: candidate.location,\n      years_experience: candidate.years_experience,\n      current_role: candidate.current_role,\n      ats_experience: candidate.ats_experience,\n      ashby_score: scoring.ashby_score,\n      coordination_score: scoring.coordination_score,\n      english_score: scoring.english_score,\n      startup_score: scoring.startup_score,\n      automation_score: scoring.automation_score,\n      overall_score: recomputed,\n      tier,\n      top_strengths: scoring.top_strengths ?? '',\n      main_gap: scoring.main_gap ?? '',\n      recommendation: scoring.recommendation ?? '',\n      scored_at: new Date().toISOString(),\n    }\n  };"
+        "jsCode": "const groqResponse = $input.item.json;\nconst candidate = $('Validate Required Fields').item.json;\n\nlet scoring;\ntry {\n  const rawContent = groqResponse.choices[0].message.content;\n  scoring = JSON.parse(rawContent);\n} catch (e) {\n  return {\n    json: {\n      name: candidate.name ?? '(unknown)',\n      email: candidate.email ?? '',\n      location: candidate.location ?? '',\n      years_experience: candidate.years_experience ?? '',\n      overall_score: 'ERROR',\n      technical_skills: 'ERROR',\n      experience_relevance: 'ERROR',\n      communication_indicators: 'ERROR',\n      match_explanation: `Parse error: ${e.message}`,\n      flag: 'ERROR',\n      scored_at: new Date().toISOString(),\n    }\n  };\n}\n\nconst required = ['technical_skills', 'experience_relevance', 'communication_indicators'];\nconst missing = required.filter(k => scoring[k] == null);\nif (missing.length > 0) {\n  return {\n    json: {\n      name: candidate.name ?? '(unknown)',\n      email: candidate.email ?? '',\n      location: candidate.location ?? '',\n      years_experience: candidate.years_experience ?? '',\n      overall_score: 'ERROR',\n      technical_skills: 'ERROR',\n      experience_relevance: 'ERROR',\n      communication_indicators: 'ERROR',\n      match_explanation: `Incomplete LLM response — missing: ${missing.join(', ')}`,\n      flag: 'ERROR',\n      scored_at: new Date().toISOString(),\n    }\n  };\n}\n\nconst overall = Math.round((\n  Number(scoring.technical_skills)         * 0.35 +\n  Number(scoring.experience_relevance)      * 0.40 +\n  Number(scoring.communication_indicators)  * 0.25\n) * 10) / 10;\n\nconst flag = overall >= 70 ? 'Qualified'\n           : overall >= 45 ? 'Needs Review'\n           : 'Unqualified';\n\nreturn {\n  json: {\n    name: candidate.name,\n    email: candidate.email,\n    location: candidate.location,\n    years_experience: candidate.years_experience,\n    overall_score: overall,\n    technical_skills: scoring.technical_skills,\n    experience_relevance: scoring.experience_relevance,\n    communication_indicators: scoring.communication_indicators,\n    match_explanation: scoring.match_explanation ?? '',\n    flag,\n    scored_at: new Date().toISOString(),\n  }\n};"
       },
       "id": "4bd31cfc-a036-4102-bcb6-6c546a8b1574",
       "name": "Parse & Validate Score",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        1152,
-        -160
-      ]
+      "position": [1152, -160]
     },
     {
       "parameters": {
@@ -151,159 +146,17 @@
           "value": {},
           "matchingColumns": [],
           "schema": [
-            {
-              "id": "name",
-              "displayName": "name",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "email",
-              "displayName": "email",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "location",
-              "displayName": "location",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "years_experience",
-              "displayName": "years_experience",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "current_role",
-              "displayName": "current_role",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "ats_experience",
-              "displayName": "ats_experience",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "ashby_score",
-              "displayName": "ashby_score",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "coordination_score",
-              "displayName": "coordination_score",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "english_score",
-              "displayName": "english_score",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "startup_score",
-              "displayName": "startup_score",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "automation_score",
-              "displayName": "automation_score",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "overall_score",
-              "displayName": "overall_score",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "tier",
-              "displayName": "tier",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "top_strengths",
-              "displayName": "top_strengths",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "main_gap",
-              "displayName": "main_gap",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "recommendation",
-              "displayName": "recommendation",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "scored_at",
-              "displayName": "scored_at",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            }
+            { "id": "name", "displayName": "name", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "email", "displayName": "email", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "location", "displayName": "location", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "years_experience", "displayName": "years_experience", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "overall_score", "displayName": "overall_score", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "technical_skills", "displayName": "technical_skills", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "experience_relevance", "displayName": "experience_relevance", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "communication_indicators", "displayName": "communication_indicators", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "match_explanation", "displayName": "match_explanation", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "flag", "displayName": "flag", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "scored_at", "displayName": "scored_at", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true }
           ],
           "attemptToConvertTypes": false,
           "convertFieldsToString": false
@@ -314,10 +167,7 @@
       "name": "Write to Results Sheet",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4,
-      "position": [
-        1328,
-        -160
-      ],
+      "position": [1328, -160],
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "gnWsG4rD0LI3VmDk",
@@ -326,26 +176,10 @@
       }
     },
     {
-      "parameters": {
-        "options": {}
-      },
-      "type": "n8n-nodes-base.splitInBatches",
-      "typeVersion": 3,
-      "position": [
-        752,
-        -160
-      ],
-      "id": "f44d171e-e789-41b4-a616-33590bd6093c",
-      "name": "Loop Over Items"
-    },
-    {
       "parameters": {},
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
-      "position": [
-        1504,
-        -160
-      ],
+      "position": [1504, -160],
       "id": "265162af-3a46-4e17-b2a0-15c36a876a99",
       "name": "Wait",
       "webhookId": "ba026085-4728-456d-9f58-4559eb40b3d2"
@@ -354,93 +188,31 @@
   "pinData": {},
   "connections": {
     "Manual Trigger": {
-      "main": [
-        [
-          {
-            "node": "Read Candidates Sheet",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Read Candidates Sheet", "type": "main", "index": 0 }]]
     },
     "Read Candidates Sheet": {
-      "main": [
-        [
-          {
-            "node": "Validate Required Fields",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Validate Required Fields", "type": "main", "index": 0 }]]
     },
     "Validate Required Fields": {
-      "main": [
-        [
-          {
-            "node": "Loop Over Items",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Score with Groq LLM": {
-      "main": [
-        [
-          {
-            "node": "Parse & Validate Score",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Parse & Validate Score": {
-      "main": [
-        [
-          {
-            "node": "Write to Results Sheet",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Loop Over Items", "type": "main", "index": 0 }]]
     },
     "Loop Over Items": {
       "main": [
         [],
-        [
-          {
-            "node": "Score with Groq LLM",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        [{ "node": "Score with Groq LLM", "type": "main", "index": 0 }]
       ]
+    },
+    "Score with Groq LLM": {
+      "main": [[{ "node": "Parse & Validate Score", "type": "main", "index": 0 }]]
+    },
+    "Parse & Validate Score": {
+      "main": [[{ "node": "Write to Results Sheet", "type": "main", "index": 0 }]]
     },
     "Write to Results Sheet": {
-      "main": [
-        [
-          {
-            "node": "Wait",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Wait", "type": "main", "index": 0 }]]
     },
     "Wait": {
-      "main": [
-        [
-          {
-            "node": "Loop Over Items",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Loop Over Items", "type": "main", "index": 0 }]]
     }
   },
   "active": false,
